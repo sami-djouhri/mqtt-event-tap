@@ -1,0 +1,43 @@
+services:
+  mqtt-event-tap:
+    build: .
+    image: "homelab/mqtt-event-tap:${MQTT_EVENT_TAP_IMAGE_TAG:-2026.06.04}"
+    container_name: mqtt-event-tap
+    restart: unless-stopped
+    mem_limit: 64m
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+      - /run:rw,noexec,nosuid,size=8m
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+      MQTT_USERNAME: homelab
+      MQTT_PASSWORD_FILE: /run/secrets/mqtt_password
+      TOPIC: "homelab/#"
+    volumes:
+      - ./secrets/mqtt_password:/run/secrets/mqtt_password:ro
+    networks:
+      - cc-core
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import socket; s = socket.create_connection(('mosquitto', 1883), 3); s.close()"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      homelab.service: "mqtt-event-tap"
+      homelab.category: "infra"
+
+networks:
+  cc-core:
+    external: true
+    name: cc-core
